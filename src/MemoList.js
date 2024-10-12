@@ -1,14 +1,14 @@
-// src/MemoList.js
+// MemoList.js
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
-import EditMemo from './EditMemo';
 
-const MemoList = () => {
+const MemoList = ({ onEdit }) => {
   const [memos, setMemos] = useState([]);
-  const [editingMemo, setEditingMemo] = useState(null);
+  const [searchTerm, setSearchTerm] = useState(''); // 検索用のステート
 
   useEffect(() => {
+    // メモを取得
     const q = query(collection(db, 'memos'), orderBy('updatedAt', 'desc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const memosData = [];
@@ -21,6 +21,13 @@ const MemoList = () => {
     return () => unsubscribe();
   }, []);
 
+  // メモをフィルタリングする
+  const filteredMemos = memos.filter((memo) =>
+    memo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    memo.content.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // メモを削除する関数
   const handleDelete = async (id) => {
     const confirm = window.confirm('本当にこのメモを削除しますか？');
     if (!confirm) return;
@@ -34,27 +41,27 @@ const MemoList = () => {
   };
 
   return (
-    <div>
+    <div className="memo-list">
       <h2>メモ一覧</h2>
+      <input
+        type="text"
+        placeholder="検索..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)} // 検索語句を設定
+      />
       <ul>
-        {memos.map((memo) => (
-          <li key={memo.id}>
+        {filteredMemos.map((memo) => (
+          <li key={memo.id} className="memo-item">
             <h3>{memo.title}</h3>
-            <p>{memo.content}</p>
+            {/* CSSのwhite-spaceプロパティで改行を保持 */}
+            <p style={{ whiteSpace: 'pre-wrap' }}>{memo.content}</p>
             <small>更新日: {memo.updatedAt.toDate().toLocaleString()}</small>
             <br />
-            <button onClick={() => setEditingMemo(memo)}>編集</button>
-            <button onClick={() => handleDelete(memo.id)}>削除</button>
+            <button onClick={() => onEdit(memo)}>編集</button> {/* 編集ボタン */}
+            <button onClick={() => handleDelete(memo.id)}>削除</button> {/* 削除ボタン */}
           </li>
         ))}
       </ul>
-
-      {editingMemo && (
-        <EditMemo
-          memo={editingMemo}
-          onClose={() => setEditingMemo(null)}
-        />
-      )}
     </div>
   );
 };
